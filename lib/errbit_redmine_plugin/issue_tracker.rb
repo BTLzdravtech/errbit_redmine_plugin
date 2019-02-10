@@ -6,33 +6,33 @@ module ErrbitRedminePlugin
     LABEL = "redmine"
 
     FIELDS = [
-      [:account, {
-        :label       => "Redmine URL",
-        :placeholder => "http://www.redmine.org/"
-      }],
-      [:api_token, {
-        :placeholder => "API Token for your account"
-      }],
-      [:username, {
-        :placeholder => "Your username"
-      }],
-      [:password, {
-        :placeholder => "Your password"
-      }],
-      [:project_id, {
-        :label       => "Ticket Project",
-        :placeholder => "Redmine Project where tickets will be created"
-      }],
-      [:alt_project_id, {
-        :optional    => true,
-        :label       => "App Project",
-        :placeholder => "Where app's files & revisions can be viewed. (Leave blank to use the above project by default)"
-      }],
-      [:tracker_id, {
-        :optional    => true,
-        :label       => "Issue Tracker Id",
-        :placeholder => "The tracker where tickets will be created. (Leave blank to use default)"
-      }]
+        [:account, {
+            :label       => "Redmine URL",
+            :placeholder => "http://www.redmine.org/"
+        }],
+        [:api_token, {
+            :placeholder => "API Token for your account"
+        }],
+        [:username, {
+            :placeholder => "Your username"
+        }],
+        [:password, {
+            :placeholder => "Your password"
+        }],
+        [:project_id, {
+            :label       => "Ticket Project",
+            :placeholder => "Redmine Project where tickets will be created"
+        }],
+        [:alt_project_id, {
+            :optional    => true,
+            :label       => "App Project",
+            :placeholder => "Where app's files & revisions can be viewed. (Leave blank to use the above project by default)"
+        }],
+        [:tracker_id, {
+            :optional    => true,
+            :label       => "Issue Tracker Id",
+            :placeholder => "The tracker where tickets will be created. (Leave blank to use default)"
+        }]
     ]
 
     NOTE = "REST web service must be enabled in Redmine"
@@ -51,15 +51,15 @@ module ErrbitRedminePlugin
 
     def self.icons
       @icons ||= {
-        create: [
-          'image/png', ErrbitRedminePlugin.read_static_file('redmine_create.png')
-        ],
-        goto: [
-          'image/png', ErrbitRedminePlugin.read_static_file('redmine_goto.png'),
-        ],
-        inactive: [
-          'image/png', ErrbitRedminePlugin.read_static_file('redmine_inactive.png'),
-        ]
+          create: [
+              'image/png', ErrbitRedminePlugin.read_static_file('redmine_create.png')
+          ],
+          goto: [
+              'image/png', ErrbitRedminePlugin.read_static_file('redmine_goto.png'),
+          ],
+          inactive: [
+              'image/png', ErrbitRedminePlugin.read_static_file('redmine_inactive.png'),
+          ]
       }
     end
 
@@ -120,13 +120,35 @@ module ErrbitRedminePlugin
       issue_link(issue)
     end
 
+    def close_issue(issue, user: {})
+      token  = options['api_token']
+      acc    = options['account']
+      user   = options['username']
+      passwd = options['password']
+      issue_id = URI.parse(issue.issue_link).path.split('/').last
+
+      issue.update_attribute :issue_link, nil
+
+      RedmineClient::Base.configure do
+        self.token = token
+        self.user = user
+        self.password = passwd
+        self.site = acc
+        self.format = :xml
+      end
+
+      issue = RedmineClient::Issue.find(issue_id)
+      issue.update_attributes(status_id: 5, done_ratio: 100)
+      issue.save!
+    end
+
     def issue_link(issue)
       project_id = options['project_id']
 
       RedmineClient::Issue.site.to_s
-        .sub(/#{RedmineClient::Issue.site.path}$/, '') <<
-      RedmineClient::Issue.element_path(issue.id, :project_id => project_id)
-        .sub(/\.xml\?project_id=#{project_id}$/, "\?project_id=#{project_id}")
+          .sub(/#{RedmineClient::Issue.site.path}$/, '') <<
+          RedmineClient::Issue.element_path(issue.id, :project_id => project_id)
+              .sub(/\.xml\?project_id=#{project_id}$/, "\?project_id=#{project_id}")
     end
   end
 end
